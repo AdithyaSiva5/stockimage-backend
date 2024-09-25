@@ -9,7 +9,6 @@ export const logoutUser = (req: Request, res: Response, next: NextFunction) => {
       sameSite: process.env.ENV === "PROD" ? "none" : "strict",
     });
 
-    console.log("User logged out successfully");
 
     return res.status(200).json({ message: "Logout successful" });
   } catch (error) {

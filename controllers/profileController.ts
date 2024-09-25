@@ -41,6 +41,9 @@ export const profileDetails = async (
   }
 };
 
+const MAX_TITLE_LENGTH = 5;
+const MAX_FILENAME_LENGTH = 5;
+
 export const uploadImages = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -61,8 +64,11 @@ export const uploadImages = async (
     let nextOrder = highestOrder ? highestOrder.order + 1 : 0;
 
     const uploadPromises = files.map(async (file, index) => {
-      const fileExtension = file.originalname.split(".").pop();
+
+      const truncatedFileName = file.originalname.slice(0, MAX_FILENAME_LENGTH);
+      const fileExtension = truncatedFileName.split(".").pop();
       const imageKey = `${uuidv4()}.${fileExtension}`;
+
       const params = {
         Bucket: process.env.AWS_BUCKET_NAME as string,
         Key: imageKey,
@@ -72,11 +78,15 @@ export const uploadImages = async (
 
       const uploadResult = await s3.upload(params).promise();
 
+      const title = titles[index]
+        ? titles[index].slice(0, MAX_TITLE_LENGTH)
+        : truncatedFileName;
+
       const newImage = new Image({
         userId,
         imageUrl: uploadResult.Location,
         imageKey: imageKey,
-        title: titles[index] || file.originalname,
+        title: title,
         order: nextOrder + index,
       });
 
@@ -120,10 +130,12 @@ export const updateImageTitle = async (
     const { id } = req.params;
     const { title } = req.body;
     const userId = req.user.id;
+    const truncatedTitle = title.length > MAX_TITLE_LENGTH ? title.slice(0, MAX_TITLE_LENGTH) : title;
+
     const image = await Image.findOneAndUpdate(
-      { _id: id, userId },
-      { title },
-      { new: true }
+      { _id: id, userId },          
+      { title: truncatedTitle },     
+      { new: true }                 
     );
 
     if (!image) {
